@@ -12,42 +12,62 @@ public class TwistPublisher : MonoBehaviour
     public string driveTopic = "/rt/turtle1/cmd_vel";
     public float linearScale = 0.5f;
     public float angularScale = 0.5f;
+    public enum DriveMode { Keyboard, Joystick };
+    public DriveMode driveMode = DriveMode.Keyboard;
 
-    private float currentLinear = 0.0f;
-    private float currentAngular = 0.0f;
+    void Update()
+    {
+        if (driveMode == DriveMode.Keyboard)
+        {
+            UpdateKeyboard();
+        }
+        else if (driveMode == DriveMode.Joystick)
+        {
+            UpdateJoystick();
+        }
+    }
 
-    private void Update()
+    private void UpdateKeyboard()
     {
         // 監視したいキーボードの入力を指定
         float newLinear = 0.0f;
         float newAngular = 0.0f;
 
-        if (Input.GetKey(KeyCode.UpArrow))
+        float moveDirection = Input.GetAxis("Vertical");
+        if (moveDirection > 0)
         {
             newLinear = 1.0f;
         }
-        else if (Input.GetKey(KeyCode.DownArrow))
+        else if (moveDirection < 0)
         {
             newLinear = -1.0f;
+        }else
+        {
+            newLinear = 0.0f;
         }
 
-        if (Input.GetKey(KeyCode.LeftArrow))
+        float turnDirection = Input.GetAxis("Horizontal");
+        if (turnDirection < 0)
         {
             newAngular = 1.0f;
         }
-        else if (Input.GetKey(KeyCode.RightArrow))
+        else if (turnDirection > 0)
         {
             newAngular = -1.0f;
-        }
-
-        // キーボード入力に変更がある場合のみPublishTwistを呼び出す
-        if (newLinear != currentLinear || newAngular != currentAngular)
+        } else
         {
-            currentLinear = newLinear;
-            currentAngular = newAngular;
-
-            PublishTwist(currentLinear, currentAngular);
+            newAngular = 0.0f;
         }
+
+        PublishTwist(newLinear, newAngular);
+    }
+
+    private void UpdateJoystick()
+    {
+        float newLinear = Input.GetAxis("Vertical");
+        float newAngular = Input.GetAxis("Horizontal");
+
+        PublishTwist(newLinear, newAngular);
     }
 
     public void PublishTwist(float linear, float angular)
