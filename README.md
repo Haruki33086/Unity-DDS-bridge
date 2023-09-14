@@ -43,4 +43,9 @@ Receive cmd_vel to allow the robot to run.
 
 - Set up your project on Unity for MetaQuest, referring to [this site](https://note.com/npaka/n/n749a134d0c11)
 
-- Refer to [this site(https://tech.framesynthesis.co.jp/unity/metaquest/) to enable the use of the controller and camera.
+- Refer to [this site](https://tech.framesynthesis.co.jp/unity/metaquest/) to enable the use of the controller and camera.
+  Find the OVRCameraRig in Assets/Oculus/VR/Prefabs and place it in the Hierarchy. However, delete the existing Camera in the Hierarchy at this time.
+
+  Next, find OVRControllerPrefabs from where OVRCameraRig was located and attach the Controller to the LeftHandAnchor and RightHandAnchor of OVRCameraRig in the Hierarchy. At this time, apply L Touch to the controller for the left hand and R Touch to the controller for the right hand.
+
+  Finally, select Canvas in the Hierarchy, set the Render Mode of Canvas in the Inspector to World Space, and apply OVRCameraRig's CenterEyeAnchor to the Event Camera.
