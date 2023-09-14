@@ -38,3 +38,9 @@ Receive cmd_vel to allow the robot to run.
 - Change restApi, scope and driveTopic in PubTwist.cs to match your environment. However, do not forget to prefix the topic name with "\rt".
 
 - You can make the robot run by pressing the Arrow key on your keyboard.
+
+## How to introduce to MetaQuest
+
+- Set up your project on Unity for MetaQuest, referring to [this site](https://note.com/npaka/n/n749a134d0c11)
+
+- Refer to [this site(https://tech.framesynthesis.co.jp/unity/metaquest/) to enable the use of the controller and camera.
