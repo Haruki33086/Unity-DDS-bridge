@@ -2,33 +2,27 @@
 This repository provides the ability to send robot operation commands from Unity via Zenoh. to send data from Unity to Zenoh for use in ROS2, a process is required to convert the data to the DDS protocol, which is realized using CSCDR.
 
 ## Settings
-- First of all, you need to deploy the Zenoh router on your cloud server. See below.
+- First of all, you need to deploy the Zenoh router on your cloud server. See below. You need to open ports 7447, 8000, and 8080 of the server.
 
-  https://trello.com/c/lVtw0CRt/51-zenoh-router%E3%81%AE%E5%BB%BA%E3%81%A6%E6%96%B9
+- Install webserver plugin on Zenoh router referring to [link](https://github.com/eclipse-zenoh/zenoh-plugin-webserver).
 
-- Install webserver plugin on Zenoh router referring to the following article.
-
-  https://trello.com/c/qiWscnCv/50-%E9%81%A0%E9%9A%94%E6%93%8D%E4%BD%9C%E7%94%A8web%E3%82%A2%E3%83%97%E3%83%AA
-
-- Install zenoh-dds-bridge on robot side.
-
-  https://trello.com/c/0h6WmO6H/52-zenoh-bridge-dds%E3%81%AE%E5%BB%BA%E3%81%A6%E6%96%B9
+- Install zenoh-dds-bridge on robot side reffering to [link](https://github.com/eclipse-zenoh/zenoh-plugin-dds).
 
 ## How to use
 
 *Zenoh router*
 
 ```
-zenohd -P webserver:/usr/lib/libzplugin_webserver.so --cfg "plugins/webserver:{http_port:8080,}" --cfg "plugins/rest:{http_port:8000,}"
+zenohd --cfg "plugins/webserver:{http_port:8080,}" --cfg "plugins/rest:{http_port:8000,}"
 ```
 
 *Robot*
 ```
-zenoh-bridge-dds -e tcp/<cloud_ip>:7447 -m client --rest-http-port 8000 --scope "<simu>"
+zenoh-bridge-dds -e tcp/<cloud_ip>:7447 -m client --rest-http-port 8000 --scope "<scope_name>"
 ```
-Refer to the following [link](https://trello.com/c/vDoDqjL4/53-zenoh%E3%82%92%E7%94%A8%E3%81%84%E3%81%9F%E4%BD%8E%E9%81%85%E5%BB%B6%E6%98%A0%E5%83%8F%E9%85%8D%E4%BF%A1) to obtain c1.py.
+Refer to the following [link]([https://trello.com/c/vDoDqjL4/53-zenoh%E3%82%92%E7%94%A8%E3%81%84%E3%81%9F%E4%BD%8E%E9%81%85%E5%BB%B6%E6%98%A0%E5%83%8F%E9%85%8D%E4%BF%A1](https://github.com/eclipse-zenoh/zenoh-demos/blob/master/computer-vision/zcam/zcam-python/zcapture.py)) to obtain zcapture.py.
 ```
-python3 c1.py -m client -e tcp/<cloud_ip>:7447 -k "<scope_name>" -n <camera id>
+python3 zcapture.py -m client -e tcp/<cloud_ip>:7447 -k "<scope_name>"
 ```
 Receive cmd_vel to allow the robot to run.
 
