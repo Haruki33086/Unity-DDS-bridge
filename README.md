@@ -57,3 +57,7 @@ Receive cmd_vel to allow the robot to run.
 - [CSCDR](https://github.com/atolab/cscdr)
 
 - [MJPEGStreamDecoder.cs](https://gist.github.com/lightfromshadows/79029ca480393270009173abc7cad858)
+
+- [はじめての Oculus Quest アプリの作成](https://note.com/npaka/n/n749a134d0c11)
+
+- [Unity + Meta Quest開発メモ](https://tech.framesynthesis.co.jp/unity/metaquest/)
