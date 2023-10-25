@@ -43,3 +43,17 @@ Receive cmd_vel to allow the robot to run.
   Next, find OVRControllerPrefabs from where OVRCameraRig was located and attach the Controller to the LeftHandAnchor and RightHandAnchor of OVRCameraRig in the Hierarchy. At this time, apply L Touch to the controller for the left hand and R Touch to the controller for the right hand.
 
   Finally, select Canvas in the Hierarchy, set the Render Mode of Canvas in the Inspector to World Space, and apply OVRCameraRig's CenterEyeAnchor to the Event Camera.
+
+## References
+
+- [zenoh](https://github.com/eclipse-zenoh/zenoh)
+
+- [zenoh-plugin-dds](https://github.com/eclipse-zenoh/zenoh-plugin-dds)
+
+- [zenoh-demos](https://github.com/eclipse-zenoh/zenoh-demos)
+
+- [zenoh-plugin-webserver](https://github.com/eclipse-zenoh/zenoh-plugin-webserver)
+
+- [CSCDR](https://github.com/atolab/cscdr)
+
+- [MJPEGStreamDecoder.cs](https://gist.github.com/lightfromshadows/79029ca480393270009173abc7cad858)
