@@ -28,7 +28,6 @@ public class TwistPublisher : MonoBehaviour
 
     private void UpdateKeyboard()
     {
-        // 監視したいキーボードの入力を指定
         float newLinear = 0.0f;
         float newAngular = 0.0f;
 
