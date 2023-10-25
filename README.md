@@ -1,5 +1,5 @@
 # Unity-DDS-bridge
-This repository provides the ability to send robot operation commands from Unity via Zenoh. to send data from Unity to Zenoh for use in ROS2, a process is required to convert the data to the DDS protocol, which is realized using CSCDR.
+This repository provides the ability to send robot operation commands from Unity via Zenoh. to send data from Unity to Zenoh for use in ROS 2, a process is required to convert the data to the DDS protocol, which is realized using CSCDR.
 
 ## Settings
 - First of all, you need to deploy the Zenoh router on your cloud server. See below. You need to open ports 7447, 8000, and 8080 of the server.
