@@ -10,7 +10,6 @@
 
 using System.IO;
 using System.Threading;
-using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
@@ -19,23 +18,21 @@ public class MJPEGStreamDecoder : MonoBehaviour
 {
     [SerializeField] bool tryOnStart = false;
     [SerializeField] string defaultStreamURL = "http://127.0.0.1/stream";
-
     [SerializeField] public RenderTexture renderTexture;
 
     float RETRY_DELAY = 5f;
     int MAX_RETRIES = 3;
     int retryCount = 0;
 
-
     byte[] nextFrame = null;
 
     Thread worker;
     int threadID = 0;
+    bool isThreadRunning = false;
 
-    static System.Random randu; // I use my own System.Random instead of the shared UnityEngine.Random to avoid collisions
+    static System.Random randu;
     List<BufferedStream> trackedBuffers = new List<BufferedStream>();
 
-    // Start is called before the first frame update
     void Start()
     {
         randu = new System.Random(Random.Range(0, 65536));
@@ -54,6 +51,12 @@ public class MJPEGStreamDecoder : MonoBehaviour
 
     private void OnDestroy()
     {
+        isThreadRunning = false;
+        if (worker != null && worker.IsAlive)
+        {
+            worker.Join();
+        }
+
         foreach (var b in trackedBuffers)
         {
             if (b != null)
@@ -68,6 +71,7 @@ public class MJPEGStreamDecoder : MonoBehaviour
         foreach (var b in trackedBuffers)
             b.Close();
 
+        isThreadRunning = true;
         worker = new Thread(() => ReadMJPEGStreamWorker(threadID = randu.Next(65536), url));
         worker.Start();
     }
@@ -81,82 +85,88 @@ public class MJPEGStreamDecoder : MonoBehaviour
         int lastByte = 0x00;
         bool addToBuffer = false;
 
-        BufferedStream buffer = null;
         try
         {
-            Stream stream = webRequest.GetResponse().GetResponseStream();
-            buffer = new BufferedStream(stream);
-            trackedBuffers.Add(buffer);
+            using (var response = webRequest.GetResponse())
+            using (Stream stream = response.GetResponseStream())
+            using (BufferedStream buffer = new BufferedStream(stream))
+            {
+                trackedBuffers.Add(buffer);
+
+                int newByte;
+                while (isThreadRunning && buffer != null)
+                {
+                    if (threadID != id)
+                        return;
+
+                    newByte = buffer.ReadByte();
+
+                    if (newByte < 0)
+                        continue;
+
+                    if (addToBuffer)
+                        frameBuffer.Add((byte)newByte);
+
+                    if (lastByte == 0xFF) // It's a command!
+                    {
+                        if (!addToBuffer) // We're not reading a frame, should we be?
+                        {
+                            if (IsStartOfImage(newByte))
+                            {
+                                addToBuffer = true;
+                                frameBuffer.Add((byte)lastByte);
+                                frameBuffer.Add((byte)newByte);
+                            }
+                        }
+                        else // We're reading a frame, should we stop?
+                        {
+                            if (newByte == 0xD9)
+                            {
+                                frameBuffer.Add((byte)newByte);
+                                addToBuffer = false;
+                                nextFrame = frameBuffer.ToArray();
+                                frameBuffer.Clear();
+                            }
+                        }
+                    }
+
+                    lastByte = newByte;
+                }
+            }
         }
         catch (System.Exception ex)
         {
             Debug.LogError(ex);
         }
-        int newByte;
-        while (buffer != null)
+        finally
         {
-            if (threadID != id) return; // We are no longer the active thread! stop doing things damnit!
-            if (!buffer.CanRead)
-            {
-                Debug.LogError("Can't read buffer!");
-                break;
-            }
-
-            newByte = -1;
-
-            try
-            {
-                newByte = buffer.ReadByte();
-            }
-            catch
-            {
-                break; // Something happened to the stream, start a new one
-            }
-
-            if (newByte < 0) // end of stream or failure
-            {
-                continue; // End of data
-            }
-
-            if (addToBuffer)
-                frameBuffer.Add((byte)newByte);
-
-            if (lastByte == 0xFF) // It's a command!
-            {
-                if (!addToBuffer) // We're not reading a frame, should we be?
-                {
-                    if (IsStartOfImage(newByte))
-                    {
-                        addToBuffer = true;
-                        frameBuffer.Add((byte)lastByte);
-                        frameBuffer.Add((byte)newByte);
-                    }
-                }
-                else // We're reading a frame, should we stop?
-                {
-                    if (newByte == 0xD9)
-                    {
-                        frameBuffer.Add((byte)newByte);
-                        addToBuffer = false;
-                        nextFrame = frameBuffer.ToArray();
-                        frameBuffer.Clear();
-                    }
-                }
-            }
-
-            lastByte = newByte;
+            isThreadRunning = false;
         }
 
         if (retryCount < MAX_RETRIES)
         {
             retryCount++;
             Debug.LogFormat("[{0}] Retrying Connection {1}...", id, retryCount);
-            foreach (var b in trackedBuffers)
-                b.Dispose();
             trackedBuffers.Clear();
+            isThreadRunning = true;
             worker = new Thread(() => ReadMJPEGStreamWorker(threadID = randu.Next(65536), url));
             worker.Start();
         }
+    }
+
+    void SendFrame(byte[] bytes)
+    {
+        Texture2D texture2D = new Texture2D(2, 2);
+        texture2D.LoadImage(bytes);
+
+        if (texture2D.width == 2)
+        {
+            Destroy(texture2D);
+            return; // Failure!
+        }
+
+        Graphics.Blit(texture2D, renderTexture);
+        Destroy(texture2D); // Texture2Dを破棄
     }
 
     bool IsStartOfImage(int command)
@@ -192,18 +202,5 @@ public class MJPEGStreamDecoder : MonoBehaviour
                 break;
         }
         return false;
-    }
-
-    void SendFrame(byte[] bytes)
-    {
-        Texture2D texture2D = new Texture2D(2, 2);
-        texture2D.LoadImage(bytes);
-        //Debug.LogFormat("Loaded {0}b image [{1},{2}]", bytes.Length, texture2D.width, texture2D.height);
-
-        if (texture2D.width == 2)
-            return; // Failure!
-
-        Graphics.Blit(texture2D, renderTexture);
-        Destroy(texture2D); // LoadImage discards the previous buffer, so there's no point in trying to reuse it
     }
 }
