@@ -6,7 +6,7 @@ using UnityEngine.Networking;
 
 public class TwistPublisher : MonoBehaviour
 {
-    public string restApi = "http://13.208.62.139:8000";
+    public string restApi = "http://<your ip>:<your port>";
     public string scope = "/simu";
     public string driveTopic = "/rt/turtle1/cmd_vel";
     public float linearScale = 0.5f;
