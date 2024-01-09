@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 public class MJPGStreamUnity : MonoBehaviour
 {
-    [SerializeField] string streamURL = "http://13.208.62.139:8080/simu/camera?_method=SUB";
+    [SerializeField] string streamURL = "http://<your ip>:<your port>/simu/camera?_method=SUB";
     [SerializeField] RawImage imageDisplay;
 
     private MJPEGStreamDecoder mjpegDecoder;
