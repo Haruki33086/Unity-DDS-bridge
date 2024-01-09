@@ -16,26 +16,25 @@ using UnityEngine;
 
 public class MJPEGStreamDecoder : MonoBehaviour
 {
-    [SerializeField] bool tryOnStart = false;
-    [SerializeField] string defaultStreamURL = "http://127.0.0.1/stream";
+    [SerializeField] private bool tryOnStart = false;
+    [SerializeField] private string defaultStreamURL = "http://127.0.0.1/stream";
     [SerializeField] public RenderTexture renderTexture;
 
-    float RETRY_DELAY = 5f;
-    int MAX_RETRIES = 3;
-    int retryCount = 0;
+    private const float RETRY_DELAY = 5f;
+    private const int MAX_RETRIES = 3;
+    private int retryCount = 0;
 
-    byte[] nextFrame = null;
+    private byte[] nextFrame = null;
 
-    Thread worker;
-    int threadID = 0;
-    bool isThreadRunning = false;
+    private Thread worker;
+    private int threadID = 0;
+    private bool isThreadRunning = false;
 
-    static System.Random randu;
-    List<BufferedStream> trackedBuffers = new List<BufferedStream>();
+    private static System.Random randu;
+    private List<BufferedStream> trackedBuffers = new List<BufferedStream>();
 
     void Start()
     {
-        randu = new System.Random(Random.Range(0, 65536));
         if (tryOnStart)
             StartStream(defaultStreamURL);
     }
@@ -51,29 +50,48 @@ public class MJPEGStreamDecoder : MonoBehaviour
 
     private void OnDestroy()
     {
+        StopStream();
+    }
+
+    public void StartStream(string url)
+    {
+        InitializeRandomGenerator();
+        retryCount = 0;
+        StopAllCoroutines();
+        ClearBufferedStreams();
+
+        isThreadRunning = true;
+        worker = new Thread(() => ReadMJPEGStreamWorker(threadID = randu.Next(65536), url));
+        worker.Start();
+    }
+
+    private void StopStream()
+    {
         isThreadRunning = false;
         if (worker != null && worker.IsAlive)
         {
             worker.Join();
         }
 
+        ClearBufferedStreams();
+    }
+
+    private void InitializeRandomGenerator()
+    {
+        if (randu == null)
+        {  
+            randu = new System.Random(Random.Range(0, 65536));
+        }
+    }
+
+    private void ClearBufferedStreams()
+    {
         foreach (var b in trackedBuffers)
         {
             if (b != null)
                 b.Close();
         }
-    }
-
-    public void StartStream(string url)
-    {
-        retryCount = 0;
-        StopAllCoroutines();
-        foreach (var b in trackedBuffers)
-            b.Close();
-
-        isThreadRunning = true;
-        worker = new Thread(() => ReadMJPEGStreamWorker(threadID = randu.Next(65536), url));
-        worker.Start();
+        trackedBuffers.Clear();
     }
 
     void ReadMJPEGStreamWorker(int id, string url)
@@ -147,7 +165,7 @@ public class MJPEGStreamDecoder : MonoBehaviour
         {
             retryCount++;
             Debug.LogFormat("[{0}] Retrying Connection {1}...", id, retryCount);
-            trackedBuffers.Clear();
+            ClearBufferedStreams();
             isThreadRunning = true;
             worker = new Thread(() => ReadMJPEGStreamWorker(threadID = randu.Next(65536), url));
             worker.Start();
