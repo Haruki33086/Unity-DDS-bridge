@@ -10,6 +10,7 @@
 //
 using System;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace CSCDR
@@ -126,15 +127,16 @@ namespace CSCDR
             Align(4);
             ReadOnlySpan<byte> span = ReadBytes(4);
 
-            if (IsLittleEndian)
+            if (IsLittleEndian ^ BitConverter.IsLittleEndian)
             {
-                return BitConverter.ToSingle(span.ToArray(), 0);
+                Span<byte> tempSpan = stackalloc byte[4];
+                span.CopyTo(tempSpan);
+                tempSpan.Reverse();
+                return MemoryMarshal.Read<float>(tempSpan);
             }
             else
             {
-                byte[] temp = span.ToArray();
-                Array.Reverse(temp); // Reversing the array for BigEndian
-                return BitConverter.ToSingle(temp, 0);
+                return MemoryMarshal.Read<float>(span);
             }
         }
 
@@ -143,15 +145,16 @@ namespace CSCDR
             Align(8);
             ReadOnlySpan<byte> span = ReadBytes(8);
 
-            if (IsLittleEndian)
+            if (IsLittleEndian ^ BitConverter.IsLittleEndian)
             {
-                return BitConverter.ToDouble(span.ToArray(), 0);
+                Span<byte> tempSpan = stackalloc byte[8];
+                span.CopyTo(tempSpan);
+                tempSpan.Reverse();
+                return MemoryMarshal.Read<double>(tempSpan);
             }
             else
             {
-                byte[] temp = span.ToArray();
-                Array.Reverse(temp); // Reversing the array for BigEndian
-                return BitConverter.ToDouble(temp, 0);
+                return MemoryMarshal.Read<double>(span);
             }
         }
 
