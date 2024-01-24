@@ -6,71 +6,90 @@ using UnityEngine.Networking;
 
 public class TwistPublisher : MonoBehaviour
 {
-    public string restApi = "http://<your ip>:<your port>";
-    public string scope = "/simu";
+    public string restApi = "http://13.208.62.139:8000/";
+    public string scope = "simu";
     public string driveTopic = "/rt/turtle1/cmd_vel";
-    public float linearScale = 0.5f;
-    public float angularScale = 0.5f;
+    public string rotationTopic = "/rt/rotaion";
+    public float linearScale = 0.5f;  // ロボットの最大速度に合わせて調整
+    public float angularScale = 0.5f; // ロボットの最大角速度に合わせて調整
+    public float rotaionScale = 0.3f; // ロボットの最大角速度に合わせて調整
     public enum DriveMode { Keyboard, Joystick };
     public DriveMode driveMode = DriveMode.Keyboard;
 
-    void Update()
+    private UnityWebRequest request; // UnityWebRequestを保持する変数を追加
+
+    void FixedUpdate()
     {
         if (driveMode == DriveMode.Keyboard)
         {
-            UpdateKeyboard();
+            UpdateKeyboardInput();
         }
         else if (driveMode == DriveMode.Joystick)
         {
-            UpdateJoystick();
+            UpdateJoystickInput();
         }
     }
 
-    private void UpdateKeyboard()
+    private void UpdateKeyboardInput()
     {
         float newLinear = 0.0f;
         float newAngular = 0.0f;
+        bool inputDetected = false;
 
         float moveDirection = Input.GetAxis("Vertical");
         if (moveDirection > 0)
         {
             newLinear = 1.0f;
+            inputDetected = true;
         }
         else if (moveDirection < 0)
         {
             newLinear = -1.0f;
-        }else
-        {
-            newLinear = 0.0f;
+            inputDetected = true;
         }
 
         float turnDirection = Input.GetAxis("Horizontal");
         if (turnDirection < 0)
         {
             newAngular = 1.0f;
+            inputDetected = true;
         }
         else if (turnDirection > 0)
         {
             newAngular = -1.0f;
-        } else
-        {
-            newAngular = 0.0f;
+            inputDetected = true;
         }
 
-        PublishTwist(newLinear, newAngular);
+        if (inputDetected)
+        {
+            PublishTwist(newLinear, newAngular);
+        }
     }
 
-    private void UpdateJoystick()
+    private void UpdateJoystickInput()
     {
         float newLinear = Input.GetAxis("MetaVertical");
         float newAngular = Input.GetAxis("MetaHorizontal");
-        // Debug.Log(newLinear + " " + newAngular);
+        // bool newLeftRotation = OVRInput.GetDown(OVRInput.RawButton.LHandTrigger);
+        // bool newRightRotation = OVRInput.GetDown(OVRInput.RawButton.RHandTrigger);
+        bool inputDetected = newLinear != 0.0f || newAngular != 0.0f;
 
-        PublishTwist(newLinear, -newAngular);
+        if (inputDetected)
+        {
+            PublishTwist(newLinear, -newAngular);
+            // PublishRotation(newLeftRotation, newRightRotation);
+        }
     }
 
     public void PublishTwist(float linear, float angular)
     {
+        // 先に実行中のリクエストがある場合、キャンセルしてクリア
+        if (request != null && !request.isDone)
+        {
+            request.Abort();
+            request.Dispose();
+        }
+
         // Create a Twist message
         TwistMessage twist = new TwistMessage
         {
@@ -88,10 +107,45 @@ public class TwistPublisher : MonoBehaviour
         StartCoroutine(SendTwistRequest(keyExpr, twistData));
     }
 
+    public void PublishRotation(bool leftRotation, bool rightRotation)
+    {
+        // 先に実行中のリクエストがある場合、キャンセルしてクリア
+        if (request != null && !request.isDone)
+        {
+            request.Abort();
+            request.Dispose();
+        }
+
+        // Create a Twist message
+        TwistMessage twist = new TwistMessage
+        {
+            linear = new Vector3 { x = 0.0f, y = 0.0f, z = 0.0f },
+            angular = new Vector3 { x = 0.0f, y = 0.0f, z = 0.0f }
+        };
+
+        if (leftRotation)
+        {
+            twist.angular.z = rotaionScale;
+        }
+        else if (rightRotation)
+        {
+            twist.angular.z = -rotaionScale;
+        }
+
+        // Encode the Twist message as binary data
+        byte[] twistData = twist.Encode();
+
+        // The key expression for publication
+        string keyExpr = scope + rotationTopic;
+
+        // Send the Twist message to zenoh via its REST API
+        StartCoroutine(SendTwistRequest(keyExpr, twistData));
+    }
+
     private IEnumerator SendTwistRequest(string keyExpr, byte[] twistData)
     {
         string url = restApi + keyExpr;
-        using UnityWebRequest request = new UnityWebRequest(url, "PUT"); // メモリリークが起こるので先頭にusing
+        request = new UnityWebRequest(url, "PUT");
         request.uploadHandler = new UploadHandlerRaw(twistData);
         request.uploadHandler.contentType = "application/octet-stream";
         request.downloadHandler = new DownloadHandlerBuffer();
@@ -99,11 +153,21 @@ public class TwistPublisher : MonoBehaviour
 
         if (request.result == UnityWebRequest.Result.Success)
         {
-            // Debug.Log("Sent cmd_vel to " + url);
+            Debug.Log("Sent cmd_vel to " + url);
         }
         else
         {
             Debug.LogError("Failed to send cmd_vel: " + request.error);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        // スクリプトが破棄される際に未完了のリクエストをキャンセルしてクリア
+        if (request != null && !request.isDone)
+        {
+            request.Abort();
+            request.Dispose();
         }
     }
 
