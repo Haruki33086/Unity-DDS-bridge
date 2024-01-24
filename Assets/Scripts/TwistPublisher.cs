@@ -68,16 +68,20 @@ public class TwistPublisher : MonoBehaviour
 
     private void UpdateJoystickInput()
     {
-        float newLinear = Input.GetAxis("MetaVertical");
-        float newAngular = Input.GetAxis("MetaHorizontal");
-        // bool newLeftRotation = OVRInput.GetDown(OVRInput.RawButton.LHandTrigger);
-        // bool newRightRotation = OVRInput.GetDown(OVRInput.RawButton.RHandTrigger);
+        float newLinear = OVRInput.Get(OVRInput.RawAxis2D.LThumbstick).y;
+        float newAngular = OVRInput.Get(OVRInput.RawAxis2D.RThumbstick).x;
+        bool newLeftRotation = OVRInput.GetDown(OVRInput.RawButton.LHandTrigger);
+        bool newRightRotation = OVRInput.GetDown(OVRInput.RawButton.RHandTrigger);
         bool inputDetected = newLinear != 0.0f || newAngular != 0.0f;
+        bool rotaionInputDetected = newLeftRotation || newRightRotation;
 
-        if (inputDetected)
+        if (inputDetected || rotaionInputDetected)
         {
             PublishTwist(newLinear, -newAngular);
-            // PublishRotation(newLeftRotation, newRightRotation);
+            if (rotaionInputDetected)
+            {
+                PublishRotation(newLeftRotation, newRightRotation);
+            }
         }
     }
 
