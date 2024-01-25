@@ -11,8 +11,7 @@ public class Float64Subscriber : MonoBehaviour
     public string topic = "<your topic>";
 
     private EventSourceReader eventSource;
-    // private double? pendingData = null; // aaaa
-    public double LatestData { get; private set; }
+    public double LatestData { get; private set; } = 1.0;
 
     private async void Start()
     {
@@ -51,7 +50,6 @@ public class Float64Subscriber : MonoBehaviour
             double data = reader.ReadDouble();
             Debug.Log($"{topic}: {data}");
 
-            // pendingData = data; // aaaa
             LatestData = data;
 
         }
@@ -60,30 +58,6 @@ public class Float64Subscriber : MonoBehaviour
             Debug.LogError($"Error processing data: {ex.Message}");
         }
     }
-
-    // private void Update() // aaaa
-    // {
-    //     // Check if there's pending data to process
-    //     if (pendingData.HasValue)
-    //     {
-    //         ChangeBackgroundColor(pendingData.Value);
-    //         pendingData = null; // Reset pending data
-    //     }
-    // }
-
-    // private void ChangeBackgroundColor(double data) // aaaa
-    // {
-    //     if (data <= 0.2)
-    //     {
-    //         Camera.main.backgroundColor = Color.red;
-    //         Debug.Log("Red");
-    //     }
-    //     else
-    //     {
-    //         Camera.main.backgroundColor = Color.blue;
-    //         Debug.Log("Blue");
-    //     }
-    // }
 
     private void OnDisconnected(object sender, DisconnectEventArgs e)
     {
