@@ -20,9 +20,13 @@ public class DataProcessor : MonoBehaviour
         {
             Camera.main.backgroundColor = Color.red;
         }
+        else if (0.2 < data && data <= 0.3)
+        {
+            Camera.main.backgroundColor = Color.yellow;
+        }
         else
         {
-            Camera.main.backgroundColor = Color.blue;
+            Camera.main.backgroundColor = Color.cyan;
         }
     }
 }
