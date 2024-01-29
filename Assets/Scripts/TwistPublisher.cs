@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Networking;
+using TMPro;
 
 public class TwistPublisher : MonoBehaviour
 {
@@ -10,13 +12,35 @@ public class TwistPublisher : MonoBehaviour
     public string scope = "simu";
     public string driveTopic = "/rt/turtle1/cmd_vel";
     public string rotationTopic = "/rt/rotaion";
-    public float linearScale = 0.5f;  // ロボットの最大速度に合わせて調整
-    public float angularScale = 0.5f; // ロボットの最大角速度に合わせて調整
-    public float rotaionScale = 0.3f; // ロボットの最大角速度に合わせて調整
+    public float linearScale = 2.0f;  // ロボットの最大速度に合わせて調整
+    public float angularScale = 2.0f; // ロボットの最大角速度に合わせて調整
+    public float rotationScale = 0.3f; // ロボットの最大角速度に合わせて調整
     public enum DriveMode { Keyboard, Joystick };
     public DriveMode driveMode = DriveMode.Keyboard;
 
     private UnityWebRequest request; // UnityWebRequestを保持する変数を追加
+
+    private bool wasLinearOrAngularInputDetectedLastFrame = false; // 速度や回転の入力状態を追跡するための変数
+    private bool wasRotationInputDetectedLastFrame = false; // 回転の入力状態を追跡するための変数
+
+    public TMP_InputField restApiInputField;
+    public TMP_InputField scopeInputField;
+    public TMP_InputField driveTopicInputField;
+    public TMP_InputField rotationTopicInputField;
+    public TMP_InputField linearScaleInputField;
+    public TMP_InputField angularScaleInputField;
+    public TMP_InputField rotationScaleInputField;
+
+    public void UpdateSettings()
+    {
+        restApi = restApiInputField.text;
+        scope = scopeInputField.text;
+        driveTopic = driveTopicInputField.text;
+        rotationTopic = rotationTopicInputField.text;
+        linearScale = float.Parse(linearScaleInputField.text);
+        angularScale = float.Parse(angularScaleInputField.text);
+        rotationScale = float.Parse(rotationScaleInputField.text);
+    }
 
     void FixedUpdate()
     {
@@ -64,24 +88,43 @@ public class TwistPublisher : MonoBehaviour
         {
             PublishTwist(newLinear, newAngular);
         }
+        else {
+            PublishTwist(0.0f, 0.0f);
+        }
     }
 
     private void UpdateJoystickInput()
     {
         float newLinear = OVRInput.Get(OVRInput.RawAxis2D.LThumbstick).y;
         float newAngular = OVRInput.Get(OVRInput.RawAxis2D.RThumbstick).x;
-        bool newLeftRotation = OVRInput.GetDown(OVRInput.RawButton.LHandTrigger);
-        bool newRightRotation = OVRInput.GetDown(OVRInput.RawButton.RHandTrigger);
-        bool inputDetected = newLinear != 0.0f || newAngular != 0.0f;
-        bool rotaionInputDetected = newLeftRotation || newRightRotation;
+        bool newLeftRotation = OVRInput.Get(OVRInput.RawButton.LHandTrigger);
+        bool newRightRotation = OVRInput.Get(OVRInput.RawButton.RHandTrigger);
 
-        if (inputDetected || rotaionInputDetected)
+        bool linearOrAngularInputDetected = newLinear != 0.0f || newAngular != 0.0f;
+        bool rotationInputDetected = newLeftRotation || newRightRotation;
+
+        // 速度や回転の入力がある場合
+        if (linearOrAngularInputDetected)
         {
             PublishTwist(newLinear, -newAngular);
-            if (rotaionInputDetected)
-            {
-                PublishRotation(newLeftRotation, newRightRotation);
-            }
+            wasLinearOrAngularInputDetectedLastFrame = true;
+        }
+        else if (wasLinearOrAngularInputDetectedLastFrame)
+        {
+            PublishTwist(0.0f, 0.0f); // 速度や回転の入力が終了したら0をパブリッシュ
+            wasLinearOrAngularInputDetectedLastFrame = false;
+        }
+
+        // 回転の入力がある場合
+        if (rotationInputDetected)
+        {
+            PublishRotation(newLeftRotation, newRightRotation);
+            wasRotationInputDetectedLastFrame = true;
+        }
+        else if (wasRotationInputDetectedLastFrame)
+        {
+            PublishRotation(false, false); // 回転の入力が終了したら0をパブリッシュ
+            wasRotationInputDetectedLastFrame = false;
         }
     }
 
@@ -129,11 +172,11 @@ public class TwistPublisher : MonoBehaviour
 
         if (leftRotation)
         {
-            twist.angular.z = rotaionScale;
+            twist.angular.z = rotationScale;
         }
         else if (rightRotation)
         {
-            twist.angular.z = -rotaionScale;
+            twist.angular.z = -rotationScale;
         }
 
         // Encode the Twist message as binary data
