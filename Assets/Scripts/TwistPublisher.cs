@@ -20,8 +20,8 @@ public class TwistPublisher : MonoBehaviour
 
     private UnityWebRequest request; // UnityWebRequestを保持する変数を追加
 
-    private bool wasLinearOrAngularInputDetectedLastFrame = false; // 速度や回転の入力状態を追跡するための変数
-    private bool wasRotationInputDetectedLastFrame = false; // 回転の入力状態を追跡するための変数
+    private bool wasInputDetectedLastFrame = false; // クラスレベルの変数として追加
+    private bool wasRotationDetectedLastFrame = false; // 回転入力の追跡用フラグ
 
     public TMP_InputField restApiInputField;
     public TMP_InputField scopeInputField;
@@ -58,40 +58,32 @@ public class TwistPublisher : MonoBehaviour
     {
         float newLinear = 0.0f;
         float newAngular = 0.0f;
-        bool inputDetected = false;
 
-        float moveDirection = Input.GetAxis("Vertical");
-        if (moveDirection > 0)
+        float moveDirection = Input.GetAxisRaw("Vertical");
+        if (moveDirection != 0 && !wasInputDetectedLastFrame)
         {
-            newLinear = 1.0f;
-            inputDetected = true;
-        }
-        else if (moveDirection < 0)
-        {
-            newLinear = -1.0f;
-            inputDetected = true;
-        }
-
-        float turnDirection = Input.GetAxis("Horizontal");
-        if (turnDirection < 0)
-        {
-            newAngular = 1.0f;
-            inputDetected = true;
-        }
-        else if (turnDirection > 0)
-        {
-            newAngular = -1.0f;
-            inputDetected = true;
-        }
-
-        if (inputDetected)
-        {
+            newLinear = moveDirection;
             PublishTwist(newLinear, newAngular);
         }
-        else {
-            PublishTwist(0.0f, 0.0f);
+
+        float turnDirection = Input.GetAxisRaw("Horizontal");
+        if (turnDirection != 0 && !wasInputDetectedLastFrame)
+        {
+            newAngular = -turnDirection;
+            PublishTwist(newLinear, newAngular);
         }
+
+        bool inputDetected = moveDirection != 0 || turnDirection != 0;
+        if (!inputDetected && wasInputDetectedLastFrame)
+        {
+            PublishTwist(0.0f, 0.0f); // 入力が終了したら0を送信
+        }
+
+        wasInputDetectedLastFrame = inputDetected; // 入力状態を更新
     }
+
+    private float lastPublishedLinear = 0.0f;
+    private float lastPublishedAngular = 0.0f;
 
     private void UpdateJoystickInput()
     {
@@ -99,32 +91,39 @@ public class TwistPublisher : MonoBehaviour
         float newAngular = OVRInput.Get(OVRInput.RawAxis2D.RThumbstick).x;
         bool newLeftRotation = OVRInput.Get(OVRInput.RawButton.LHandTrigger);
         bool newRightRotation = OVRInput.Get(OVRInput.RawButton.RHandTrigger);
-
-        bool linearOrAngularInputDetected = newLinear != 0.0f || newAngular != 0.0f;
         bool rotationInputDetected = newLeftRotation || newRightRotation;
 
-        // 速度や回転の入力がある場合
-        if (linearOrAngularInputDetected)
+        float linearValue = (newLinear > 0.0f) ? 1.0f : (newLinear < 0.0f) ? -1.0f : 0.0f;
+        float angularValue = (newAngular > 0.0f) ? -1.0f : (newAngular < 0.0f) ? 1.0f : 0.0f;
+
+        if (linearValue != lastPublishedLinear || angularValue != lastPublishedAngular)
         {
-            PublishTwist(newLinear, -newAngular);
-            wasLinearOrAngularInputDetectedLastFrame = true;
-        }
-        else if (wasLinearOrAngularInputDetectedLastFrame)
-        {
-            PublishTwist(0.0f, 0.0f); // 速度や回転の入力が終了したら0をパブリッシュ
-            wasLinearOrAngularInputDetectedLastFrame = false;
+            PublishTwist(linearValue, angularValue);
+            Debug.Log(newLinear);
+            Debug.Log(newAngular);
+            lastPublishedLinear = linearValue;
+            lastPublishedAngular = angularValue;
         }
 
-        // 回転の入力がある場合
         if (rotationInputDetected)
         {
-            PublishRotation(newLeftRotation, newRightRotation);
-            wasRotationInputDetectedLastFrame = true;
+            if (!wasRotationDetectedLastFrame)
+            {
+                PublishRotation(newLeftRotation, newRightRotation); // 回転入力が開始されたら値をパブリッシュ
+            }
+            wasRotationDetectedLastFrame = true;
         }
-        else if (wasRotationInputDetectedLastFrame)
+        else if (wasRotationDetectedLastFrame)
         {
-            PublishRotation(false, false); // 回転の入力が終了したら0をパブリッシュ
-            wasRotationInputDetectedLastFrame = false;
+            PublishRotation(false, false); // 回転入力が終了したら0をパブリッシュ
+            wasRotationDetectedLastFrame = false;
+        }
+
+        if (newLinear == 0.0f && newAngular == 0.0f && (lastPublishedLinear != 0.0f || lastPublishedAngular != 0.0f))
+        {
+            PublishTwist(0.0f, 0.0f); // 入力が終了したら0を一度だけパブリッシュ
+            lastPublishedLinear = 0.0f;
+            lastPublishedAngular = 0.0f;
         }
     }
 
